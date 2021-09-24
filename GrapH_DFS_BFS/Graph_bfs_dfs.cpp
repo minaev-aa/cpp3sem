@@ -225,7 +225,7 @@ private:
     {
         if (color[num] == 'w')
 	{
-            depth_first_search(num, G);
+            breadth_first_search(num, G);
         }
     }
 
@@ -311,7 +311,10 @@ int _tmain(int argc, _TCHAR* argv[])
         	}
 	}
    	Graph G(R);
-	BFS len(G,6);
+	for (int k = 0; k < n; k++)
+	{
+	BFS len(G,k);
+	}
 	G.printMatrix();
 	find_comps(G);
 	system("pause");
@@ -356,7 +359,7 @@ example:
 0
 1
 0
-0
+1
 0
 0
 0
