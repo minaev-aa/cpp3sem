@@ -52,7 +52,6 @@ public:
     }
 };
 
-
 class RandomState: public State
 {
 private:
