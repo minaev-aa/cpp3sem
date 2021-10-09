@@ -40,11 +40,7 @@ public:
 
     Vector<T>(int Dimension)
     {
-        //конструктор Vector A(2);
-        if(Dimension<=0)
-            dim = 3;
-        else
-            dim = Dimension;
+        dim = Dimension;
         ptr = new T [dim];
     }
 
