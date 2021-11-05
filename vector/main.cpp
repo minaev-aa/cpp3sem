@@ -11,7 +11,6 @@ private:
 public:
     Vector<T>& operator = (const Vector& A)
     {
-        //оператор для копирования, a = b
         if(dim!=A.dim)
         {
             ptr = new T[A.dim];
@@ -20,16 +19,13 @@ public:
         int i=0;
         for(i=0;i<dim;i++)
         {
-            //ptr[i] = A.GetComponent(i);
             ptr[i] = A.ptr[i];
         }
-
         return *this;
     }
 
     Vector<T>(const Vector& V)
     {
-        //конструктор копий: создание копий и операция Vector A = B
         ptr = new T [V.dim];
         dim = V.dim;
         for(int i=0;i<V.dim;i++)
@@ -40,22 +36,22 @@ public:
 
     Vector<T>(int Dimension)
     {
-        dim = Dimension;
+        //конструктор Vector A(2);
+        if(Dimension<=0)
+            dim = 3;
+        else
+            dim = Dimension;
         ptr = new T [dim];
     }
 
     Vector<T>()
     {
-        //конструктор Vector A;
-        cout<<"\nConstructor 0 is working\n";
         dim = 3;
         ptr = new T [dim];
     }
 
     ~Vector<T>()
     {
-        //деструктор
-        cout<<"\nDestructor is working\n";
         delete[] ptr;
     }
 
@@ -85,9 +81,9 @@ public:
         {
             ptr2[i]=ptr[i];
         }
-        delete [] ptr;
         ptr = ptr2;
-        ptr2[dim+1] = number;
+        ptr[dim] = number;
+        dim++;
     }
     void pop()
     {
@@ -96,8 +92,8 @@ public:
         {
             ptr2[i]=ptr[i];
         }
-        delete [] ptr;
         ptr = ptr2;
+        dim--;
     }
     void print()
     {
@@ -109,8 +105,6 @@ public:
         }
         std::cout<<"\n";
     }
-
-
     T &operator[] (int i)
     {
         if(i>=0 && i<dim)
@@ -118,14 +112,19 @@ public:
     }
 };
 
-int main()
-{
-    if(1)
-    {
+int main() {
+    if (1) {
         Vector<int> V(3);
         Vector<int> W(2);
-        V[0] = 1; V[1] = 2; V[2] = 3;
-        W[0] = -1; W[1] = 1;
+        V[0] = 1;
+        V[1] = 2;
+        V[2] = 3;
+        W[0] = -1;
+        W[1] = 1;
+        V.print();
+        V.push_back(5);
+        V.print();
+        V.pop();
         V.print();
     }
     system("pause");
