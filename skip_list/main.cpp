@@ -3,7 +3,7 @@
 #include <vector>
 #include <iostream>
 
-template<typename T>
+template<typename T, typename X>
 class Skip_list {
 public:
     using value_type = std::pair<const int, T>;
@@ -16,11 +16,12 @@ public:
 private:
     std::vector<Skip_node *> head;
     static bool next_level() noexcept;
-    std::size_t generate_level() const;
+    std::size_t generate_level(int size) const;
     static Skip_node* allocate_node(value_type value, std::size_t levels);
     void free_all_nodes(Skip_node *head) noexcept;
 
 public:
+
     template<typename ValueType>
     class iterator_base {
     public:
@@ -45,7 +46,6 @@ public:
                 curr = curr->next[0];
             return *this;
         }
-
 
         iterator_base operator++(int) {
             auto temp = *this;
@@ -104,11 +104,23 @@ public:
         explicit iterator_base(node_type *pos) : curr(pos) {}
 
         friend class Skip_list;
+
     };
 
     using iterator = iterator_base<value_type>;
 
-    Skip_list() = default;                  // конструктора по умолчанию для пустого списка без элементов
+    Skip_list() = default;// конструктора по умолчанию для пустого списка без элементов
+
+    explicit Skip_list(typename X::iterator it_key,  typename X::iterator end_key, typename X::iterator it_data, typename X::iterator end_data)
+    {
+        if(std::distance(it_key,end_key)== std::distance(it_data,end_data)){
+            while(it_key < end_key) {
+                insert(std::make_pair(*it_key,*it_data));
+                it_key++;
+                it_data++;
+            }
+        }
+    }
 //конструктора от диапазона итератора, возможно не отсортированного, на любую другую структуру данных?todo
 
     ~Skip_list()                   // Деструктор
@@ -193,12 +205,13 @@ public:
 
     //_____________
     iterator insert(const value_type &value);   //вставки нового значения
-    //iterator insert(value_type &&value);//перегруженного метода insert для вставки диапазона итератора,
-    // возможно не отсортированного, на любую другую структуру данных todo
+    Skip_list<T, X>* insert(typename X::iterator it_key,  typename X::iterator end_key, typename X::iterator it_data, typename X::iterator end_data);
+    //перегруженного метода insert для вставки диапазона итератора,
+    // возможно не отсортированного, на любую другую структуру данных
 
-    Skip_list<T>* erase(const int &key, const T &value);
-    Skip_list<T>* erase(iterator it);
-    Skip_list<T>* erase(iterator it1, iterator it2);
+    Skip_list<T, X>* erase(const int &key, const T &value);
+    Skip_list<T, X>* erase(iterator it);
+    Skip_list<T, X>* erase(iterator it1, iterator it2);
 
     void clear() noexcept               //  удаления всех элементов списка
     {
@@ -218,6 +231,9 @@ public:
         while(x.curr->value.first==key) {
             n++;
             x++;
+            if(x.curr!=nullptr){
+                break;
+            }
         }}
         return n;
     }//количество элементов с данным ключом
@@ -230,10 +246,11 @@ public:
 
     void free_node(Skip_node *node);
 
+    Skip_list<T, X> *insert(iterator it_key, iterator end_key, iterator it_data, iterator end_data);
 };
 
-template<typename T>
-bool Skip_list<T>::next_level() noexcept
+template<typename T, typename X>
+bool Skip_list<T,X>::next_level() noexcept
 // шанс выпадания 1
 {
     double p = 0.5;
@@ -243,17 +260,17 @@ bool Skip_list<T>::next_level() noexcept
     return distrib(gen);
 }
 
-template<typename T>
-std::size_t Skip_list<T>::generate_level() const {
-    std::size_t new_node_level = std::size_t();
+template<typename T, typename X>
+std::size_t Skip_list<T, X>::generate_level(int size) const {
+    std::size_t new_node_level = size;
     do {
         ++new_node_level;
     } while (new_node_level <= head.size() && next_level());
 
     return new_node_level;
 }
-template< typename T>
-typename Skip_list<T>::Skip_node* Skip_list<T>::allocate_node(value_type value, std::size_t levels)
+template< typename T, typename X>
+typename Skip_list<T, X>::Skip_node* Skip_list<T, X>::allocate_node(value_type value, std::size_t levels)
 {
     const auto node_size = sizeof(Skip_node) + (levels - 1) * sizeof(Skip_node*);
     const auto node = _aligned_malloc(node_size, alignof(Skip_node));
@@ -261,29 +278,29 @@ typename Skip_list<T>::Skip_node* Skip_list<T>::allocate_node(value_type value, 
     return reinterpret_cast<Skip_node*>(node);
 }
 
-template<typename T>
-void Skip_list<T>::free_node(Skip_node* node) {
+template<typename T, typename X>
+void Skip_list<T, X>::free_node(Skip_node* node) {
     node->~Skip_node();
     _aligned_free(node);
 }
 
-template<typename T>
-void Skip_list<T>::free_all_nodes(Skip_node* heads) noexcept {
+template<typename T, typename X>
+void Skip_list<T, X>::free_all_nodes(Skip_node* heads) noexcept {
     for (auto index = heads; index != nullptr;) {
         const auto temp = index;
         index = index->next[0];
         free_node(temp);
     }
 }
-
-template<typename T>
-typename Skip_list<T>::iterator Skip_list<T>::insert(const value_type &value) {
-    const auto insert_level = generate_level();
+template<typename T, typename X>
+typename Skip_list<T, X>::iterator Skip_list<T, X>::insert(const value_type &value) {
+    auto level = head.size();
+    const auto insert_level = generate_level(level);
     auto insert_node = allocate_node(value, insert_level);
     if (head.size() < insert_level) {
         head.resize(insert_level, nullptr);
+        level = head.size();
     }
-    auto level = head.size();
     auto next = head.data();
     Skip_list::iterator insert_pos;
     while (level > 0) {
@@ -308,9 +325,9 @@ typename Skip_list<T>::iterator Skip_list<T>::insert(const value_type &value) {
         else if (node->value.first == value.first) {
             if (level <= insert_level) {
                 if(node->value.second > value.second){
-                insert_node->next[index] = next[index];
-                next[index] = insert_node;
-                insert_pos = Skip_list::iterator{next[index]};}
+                    insert_node->next[index] = next[index];
+                    next[index] = insert_node;
+                    insert_pos = Skip_list::iterator{next[index]};}
                 else{
                     Skip_node* x(next[index]);
                     if((x->next)[index]!= nullptr){
@@ -343,8 +360,8 @@ typename Skip_list<T>::iterator Skip_list<T>::insert(const value_type &value) {
     return insert_pos;
 }
 
-template<typename T>
-Skip_list<T>* Skip_list<T>::erase(const int &key, const T &value) {
+template<typename T, typename X>
+Skip_list<T, X>* Skip_list<T, X>::erase(const int &key, const T &value) {
     Skip_list::Skip_node *node = nullptr;
     auto level = head.size();
     auto next = head.data();
@@ -371,8 +388,8 @@ Skip_list<T>* Skip_list<T>::erase(const int &key, const T &value) {
     }
 }
 
-template<typename T>
-Skip_list<T>* Skip_list<T>::erase(Skip_list::iterator it) {
+template<typename T, typename X>
+Skip_list<T, X>* Skip_list<T, X>::erase(Skip_list::iterator it) {
     if(it.curr!= (nullptr)){
         auto x = it.curr->value.first;
         auto y = it.curr->value.second;
@@ -380,8 +397,8 @@ Skip_list<T>* Skip_list<T>::erase(Skip_list::iterator it) {
     }
 }
 
-template<typename T>
-Skip_list<T>* Skip_list<T>::erase(Skip_list::iterator it1, Skip_list::iterator it2) {
+template<typename T, typename X>
+Skip_list<T, X>* Skip_list<T, X>::erase(Skip_list::iterator it1, Skip_list::iterator it2) {
     Skip_list::iterator a = it1; //? Возможно ошибки
     auto b = a;
     do{
@@ -394,8 +411,8 @@ Skip_list<T>* Skip_list<T>::erase(Skip_list::iterator it1, Skip_list::iterator i
     return this;
     }
 
-template<typename T>
-typename Skip_list<T>::iterator Skip_list<T>::find(const int& key)
+template<typename T, typename X>
+typename Skip_list<T, X>::iterator Skip_list<T, X>::find(const int& key)
     {
         auto level = head.size();
         auto next = head.data();
@@ -415,13 +432,15 @@ typename Skip_list<T>::iterator Skip_list<T>::find(const int& key)
         return x;
     }
 
-template<typename T>
-typename Skip_list<T>::iterator Skip_list<T>::lower_bound(const value_type &value) {
-    const auto insert_level = generate_level();
+template<typename T, typename X>
+typename Skip_list<T, X>::iterator Skip_list<T, X>::lower_bound(const value_type &value) {
+    auto level = head.size();
+    const auto insert_level = generate_level(level);
     if (head.size() < insert_level) {
         head.resize(insert_level, nullptr);
+        auto level = head.size();
+
     }
-    auto level = head.size();
     auto next = head.data();
     while (level > 0) {
         const auto index = level - 1;
@@ -441,13 +460,14 @@ typename Skip_list<T>::iterator Skip_list<T>::lower_bound(const value_type &valu
     return iterator_base();
 }
 
-template<typename T>
-typename Skip_list<T>::iterator Skip_list<T>::upper_bound(const value_type &value) {
-    const auto insert_level = generate_level();
+template<typename T, typename X>
+typename Skip_list<T, X>::iterator Skip_list<T, X>::upper_bound(const value_type &value) {
+    auto level = head.size();
+    const auto insert_level = generate_level(level);
     if (head.size() < insert_level) {
         head.resize(insert_level, nullptr);
+        auto level = head.size();
     }
-    auto level = head.size();
     auto next = head.data();
     while (level > 0) {
         const auto index = level - 1;
@@ -468,13 +488,16 @@ typename Skip_list<T>::iterator Skip_list<T>::upper_bound(const value_type &valu
 }
 
 
-template<typename T>
-std::pair<typename Skip_list<T>::iterator, typename Skip_list<T>::iterator> Skip_list<T>::equal_range(const int &key) {
+template<typename T, typename X>
+std::pair<typename Skip_list<T, X>::iterator, typename Skip_list<T, X>::iterator> Skip_list<T, X>::equal_range(const int &key) {
     auto x = find(key);
     auto y = x;
-    if (y.curr != nullptr) {
+    if ((y+1).curr != nullptr) {
         while ((y+1).curr->value.first == key) {
             y++;
+            if ((y+1).curr == nullptr) {
+                break;
+            }
         }
         return std::make_pair(x,y);
     }
@@ -482,16 +505,32 @@ std::pair<typename Skip_list<T>::iterator, typename Skip_list<T>::iterator> Skip
         return std::make_pair(x, y);
 }
 
+template<typename T, typename X>
+Skip_list<T, X>* Skip_list<T, X>::insert(typename X::iterator it_key,  typename X::iterator end_key, typename X::iterator it_data, typename X::iterator end_data) {
+    if(std::distance(it_key,end_key)== std::distance(it_data,end_data)){
+        while(it_key < end_key) {
+            this->insert(std::make_pair(*it_key,*it_data));
+            it_key++;
+            it_data++;
+        }
+    }
+    return  this;
+}
+
 
 int main() {
-    Skip_list<int> sk;
-    Skip_list<int> sk1(sk);
-    sk.insert(std::make_pair(3, 10));
-    sk.insert(std::make_pair(2, 20));
-    sk.insert(std::make_pair(1, 30));
-    sk.insert(std::make_pair(1, 40));
-    sk.insert(std::make_pair(3, 50));
-    Skip_list<int> sk2 (sk);
+    std::vector <int> z = {1, 2, 3, 4};
+    std::vector <int> e = {5, 6, 7, 8};
+    Skip_list<int,std::vector<int>> sk;
+    Skip_list<int, std::vector<int>> sk1(sk);
+    Skip_list<int, std::vector<int>> sk3(z.begin(), z.end(), e.begin(), e.end());
+    sk3.insert(e.begin(), e.end(),z.begin(), z.end() );
+    sk.insert(std::make_pair(1, 21));
+    sk.insert(std::make_pair(1,34));
+    sk.insert(std::make_pair(4, 54));
+    sk.insert(std::make_pair(9, 67));
+    sk.insert(std::make_pair(7, 16));
+    Skip_list<int, std::vector<int>> sk2 (sk);
     auto m = sk.equal_range(1);
     std::cout<<sk.empty()<<'\n';
     std::cout<<sk.count(1)<<'\n';
@@ -503,5 +542,6 @@ int main() {
     sk.erase(a);
     sk.clear();
     sk.erase(sk.begin(),sk.end());
+
     return 0;
 }
